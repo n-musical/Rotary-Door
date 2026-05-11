@@ -552,7 +552,6 @@ function openAddPad() {
   document.getElementById('cnt-val').textContent = 5;
   document.getElementById('rew-rows').innerHTML = '';
   addRewRow('rew-rows');
-  initEpicker();
   openModal('m-add-pad');
 }
 
@@ -573,7 +572,6 @@ function openEditPad(idx) {
     row.innerHTML = '<input class="inp" type="number" value="' + r.n + '" style="width:70px;flex-shrink:0;"><input class="inp" value="' + r.label + '"><button class="rmb" onclick="this.parentElement.remove()">✕</button>';
     c.appendChild(row);
   });
-  initEpicker();
   openModal('m-add-pad');
 }
 
