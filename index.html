@@ -33,7 +33,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 
 /* 하단 네비 */
 .bnav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--sur); border-top: 1px solid var(--brd); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-.ni { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0 12px; cursor: pointer; border: none; background: none; font-family: inherit; color: var(--mu2); transition: color .15s; }
+.ni { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0 12px; cursor: pointer; border: none; background: none; font-family: inherit; color: var(--mu); }
 .ni.on { color: var(--navy); }
 .ni-ico { font-size: 22px; line-height: 1; margin-bottom: 3px; }
 .ni-lbl { font-size: 10px; font-weight: 500; }
@@ -201,7 +201,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   </div>
   <div class="calgrid" id="cal-grid"></div>
   <div style="padding:16px 20px;">
-    <button class="actbtn" onclick="openModal('m-record')">관람 일정 등록하기</button>
+    <button class="actbtn" onclick="openRecordModal()">관람 일정 등록하기</button>
   </div>
 </div>
 
@@ -258,7 +258,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <button class="cb" onclick="changeCnt(1)">+</button>
     </div>
     <label class="lbl">도장 모양</label>
-<emoji-picker id="picker"></emoji-picker>
+    <div id="emoji-grid" class="epwrap"><div class="epgrid" id="ep-grid"></div></div>
     <label class="lbl">혜택 구간 설정</label>
     <div id="rew-rows"></div>
     <button class="addrb" onclick="addRewRow('rew-rows')">+ 혜택 구간 추가</button>
@@ -339,11 +339,11 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <button class="tgl" id="r-night" onclick="setTime('rec','night')">🌙 밤공</button>
     </div>
     <label class="lbl">적립</label>
-<select id="s-stampcnt" class="inp">
-  <option value="1">일반 적립</option>
-  <option value="2">더블 적립</option>
-  <option value="3">트리플 적립</option>
-</select>
+    <select id="s-stampcnt" class="inp">
+      <option value="1">일반 적립</option>
+      <option value="2">더블 적립</option>
+      <option value="3">트리플 적립</option>
+    </select>
     <label class="lbl">티켓 가격</label>
     <input class="inp" type="number" id="r-price" placeholder="예) 99000">
     <label class="lbl">한줄 감상 (선택)</label>
@@ -561,9 +561,22 @@ function openAddPad() {
   padCnt = 5;
   selEmoji = '🎭';
   document.getElementById('cnt-val').textContent = 5;
+  renderEmojiPicker();
   document.getElementById('rew-rows').innerHTML = '';
   addRewRow('rew-rows');
   openModal('m-add-pad');
+}
+
+function renderEmojiPicker() {
+  var grid = document.getElementById('ep-grid');
+  grid.innerHTML = EMOJIS.map(function(e) {
+    return '<div class="ep' + (e === selEmoji ? ' on' : '') + '" onclick="selectEmoji(\'' + e + '\')">' + e + '</div>';
+  }).join('');
+}
+
+function selectEmoji(e) {
+  selEmoji = e;
+  renderEmojiPicker();
 }
 
 function openEditPad(idx) {
@@ -575,6 +588,7 @@ function openEditPad(idx) {
   padCnt = p.total;
   selEmoji = p.emoji || '🎭';
   document.getElementById('cnt-val').textContent = padCnt;
+  renderEmojiPicker();
   var c = document.getElementById('rew-rows');
   c.innerHTML = '';
   p.rewards.forEach(function(r) {
@@ -677,7 +691,6 @@ function renderDet() {
   dc.innerHTML = Array.from({ length: p.total }, function(_, i) {
     if (i < recs.length) {
       var r = recs[i];
-      // 원본 인덱스 찾기
       var origIdx = (p.records || []).findIndex(function(rec) {
         return rec.date === r.date && rec.time === r.time && rec.memo === r.memo;
       });
@@ -740,57 +753,29 @@ function doStamp() {
   var memo = document.getElementById('s-memo').value.trim();
   if (!date) { alert('날짜를 입력해주세요'); return; }
 
-  // 현재 도장판에 찍을 수 있는 만큼 찍기
-  var stampCnt = Number(document.getElementById('s-stampcnt').value || 1);
   var left = stampCnt;
-
-while (left > 0) {
-
-  var remaining = p.goal - p.records.length;
-
-  // 현재 도장판 다 찼으면 새 도장판 생성
-  if (remaining <= 0) {
-
-    var newPad = {
-      goal: p.goal,
-      reward: p.reward,
-      records: []
-    };
-
-    curShow.pads.push(newPad);
-    p = newPad;
-
-    remaining = p.goal;
-  }
-
-  var toAdd = Math.min(left, remaining);
+  var toAdd = Math.min(left, p.total - p.records.length);
 
   for (var i = 0; i < toAdd; i++) {
     p.records.push({
       date: date,
       time: times.stamp,
-      memo: i === 0 ? memo : (memo ? memo : ''),
+      memo: i === 0 ? memo : '',
       photo: photoData || null
     });
   }
 
-  left -= toAdd;
-}
+  checkRewards(curShow, curPad);
 
-checkRewards(curShow, curPad);
-
-  // 이월 처리
   var overflow = stampCnt - toAdd;
   var carryMsg = '';
   if (overflow > 0) {
-    // 같은 설정으로 새 도장판 자동 생성
     var newPad = {
       total: p.total,
       emoji: p.emoji,
       rewards: JSON.parse(JSON.stringify(p.rewards)),
       records: []
     };
-    // 이월 도장 찍기
     for (var j = 0; j < overflow; j++) {
       newPad.records.push({ date: date, time: times.stamp, memo: memo, photo: null });
     }
@@ -964,8 +949,8 @@ function renderCal() {
       s.pads.forEach(function(p) {
         (p.records || []).forEach(function(r) {
           if (r.date === ds && recs.length === 0) {
-  recs.push({ r: r, s: s, si: si });
-}
+            recs.push({ r: r, s: s, si: si });
+          }
         });
       });
     });
@@ -973,7 +958,9 @@ function renderCal() {
     if (recs.length) {
       posHtml = '<div class="calposters">' + recs.map(function(item) {
         var col = COLORS[item.si % COLORS.length];
-        return '<div class="calposter" style="background-image:url(' + item.r.photo + '); background-size:cover; background-position:center;"></div>';
+        return '<div class="calposter" style="background-color:' + col + '; background-image:url(' + (item.r.photo || '') + ');"></div>';
+      }).join('') + '</div>';
+    }
     html += '<div class="calcell' + (isToday ? ' today' : '') + '">' +
       '<div class="calnum">' + d + '</div>' + posHtml + '</div>';
   }
@@ -993,95 +980,61 @@ function renderB(filter) {
   var html = '';
 
   db.shows.forEach(function(s) {
-    // 같은 공연·같은 혜택명끼리 합치기
     var mergedMap = {};
     db.manualB.filter(function(b) { return b.sid === s.id; }).forEach(function(b) {
       if (mergedMap[b.label]) {
         mergedMap[b.label].total += b.total;
         mergedMap[b.label].used += b.used;
-        mergedMap[b.label].ids.push(b.id);
       } else {
-        mergedMap[b.label] = { label: b.label, total: b.total, used: b.used, ids: [b.id], isLocked: false };
+        mergedMap[b.label] = { total: b.total, used: b.used };
       }
     });
-    var earned = Object.values(mergedMap);
 
-    // 미달성 혜택 (도장판에서)
-    var lockedMap = {};
-    s.pads.forEach(function(p, pi) {
-      var filled = (p.records || []).length;
-      p.rewards.forEach(function(r) {
-        if (filled < r.n) {
-          var already = db.manualB.find(function(b) {
-            return b.sid === s.id && b.pi === pi && b.label === r.label;
-          });
-          if (!already) {
-            if (lockedMap[r.label]) {
-              // 여러 도장판에 같은 혜택이면 가장 적게 남은 것 표시
-              lockedMap[r.label].need = Math.min(lockedMap[r.label].need, r.n - filled);
-            } else {
-              lockedMap[r.label] = { label: r.label, need: r.n - filled, isLocked: true };
-            }
-          }
-        }
-      });
+    var benefits = Object.keys(mergedMap).map(function(label) {
+      var b = mergedMap[label];
+      var available = b.total - b.used;
+      var st = available > 0 ? 'ok' : (b.used > 0 ? 'used' : 'locked');
+      return { label: label, st: st, available: available, used: b.used, total: b.total };
     });
-    var locked = Object.values(lockedMap);
 
-    var all = earned.concat(locked);
+    if (!benefits.length) return;
 
-    var filtered = all.filter(function(b) {
+    var filtered = benefits.filter(function(b) {
       if (filter === 'all') return true;
-      if (filter === 'ok') return !b.isLocked && (b.total - b.used) > 0;
-      if (filter === 'used') return !b.isLocked && b.used > 0;
-      if (filter === 'locked') return b.isLocked;
-      return true;
+      if (filter === 'ok') return b.st === 'ok';
+      if (filter === 'used') return b.st === 'used';
+      if (filter === 'locked') return b.st === 'locked';
     });
 
     if (!filtered.length) return;
+
     html += '<div class="bstit">' + s.name + '</div>';
     filtered.forEach(function(b) {
-      if (b.isLocked) {
-        html += '<div class="blocked"><span style="font-weight:700;">' + b.label + '</span> <span style="color:var(--mu2);">· ' + b.need + '개 남음</span></div>';
-      } else {
-        var avail = b.total - b.used;
+      if (b.st === 'ok') {
         html += '<div class="bcard">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
-          '<div style="font-size:14px;font-weight:700;color:var(--navy);">🎟 ' + b.label + '</div>' +
-          '<div style="font-size:11px;color:var(--mu);">누적 ' + b.total + '개</div></div>' +
-          '<div class="cntrow">' +
-          '<div class="cntbox cok"><div class="n">' + avail + '</div><div class="l">미사용</div></div>' +
-          '<div class="cntbox cno"><div class="n">' + b.used + '</div><div class="l">사용 완료</div></div>' +
-          '</div>' +
-          '<button class="actbtn"' + (avail <= 0 ? ' disabled' : '') + ' onclick="useMergedBenefit(\'' + s.id + '\',\'' + b.label + '\')">사용하기</button>' +
-          '</div>';
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="font-weight:700;color:var(--navy);">' + b.label + '</span>' +
+          '<span style="font-size:12px;color:var(--gn);font-weight:700;">✓ ' + b.available + '개 사용 가능</span>' +
+          '</div></div>';
+      } else if (b.st === 'used') {
+        html += '<div class="bcard" style="background:var(--gnl);">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="font-weight:700;color:var(--gn);">' + b.label + '</span>' +
+          '<span style="font-size:12px;color:var(--gn);">모두 사용됨</span>' +
+          '</div></div>';
+      } else {
+        html += '<div class="blocked">🔒 ' + b.label + '</div>';
       }
     });
   });
 
-  if (!html) {
-    html = '<div style="text-align:center;padding:40px 20px;color:var(--mu);font-size:14px;">아직 혜택이 없어요<br>도장판을 채우면 자동으로 추가돼요 🎁</div>';
-  }
-  c.innerHTML = html;
+  c.innerHTML = html || '<div style="text-align:center;padding:40px 20px;color:var(--mu);">혜택이 없어요</div>';
 }
 
 function filterB(filter, btn) {
-  document.querySelectorAll('.fb').forEach(function(b) { b.classList.remove('on'); });
+  document.querySelectorAll('.bfil .fb').forEach(function(b) { b.classList.remove('on'); });
   btn.classList.add('on');
   renderB(filter);
-}
-
-function useMergedBenefit(sid, label) {
-  // 해당 공연+혜택명의 미사용 항목 찾아서 1개 차감
-  var targets = db.manualB.filter(function(b) {
-    return b.sid === sid && b.label === label && (b.total - b.used) > 0;
-  });
-  if (!targets.length) return;
-  if (!confirm("'" + label + "' 1개를 사용 처리할까요?")) return;
-  targets[0].used++;
-  save();
-  renderB('all');
-  document.querySelectorAll('.fb')[0].classList.add('on');
 }
 
 function openManualBenefit() {
@@ -1093,36 +1046,19 @@ function openManualBenefit() {
 
 function addManualB() {
   var sid = document.getElementById('b-show').value;
-  var label = document.getElementById('b-name').value.trim();
-  var total = parseInt(document.getElementById('b-count').value) || 1;
-  if (!label) { alert('혜택 이름을 입력해주세요'); return; }
-  db.manualB.push({ id: uid(), sid: sid, pi: -1, label: label, total: total, used: 0, auto: false });
+  var name = document.getElementById('b-name').value.trim();
+  var count = parseInt(document.getElementById('b-count').value) || 1;
+  if (!sid || !name) { alert('필수 항목을 입력해주세요'); return; }
+  db.manualB.push({ id: uid(), sid: sid, pi: -1, label: name, total: count, used: 0, auto: false });
   save();
   closeModal('m-add-benefit');
   document.getElementById('b-name').value = '';
+  document.getElementById('b-count').value = 1;
   renderB('all');
-  document.querySelectorAll('.fb')[0].classList.add('on');
 }
 
-// ════════════════════════════════════════
-// 캘린더 버튼 연결
-// ════════════════════════════════════════
-document.querySelector('#sc-cal .actbtn').addEventListener('click', openRecordModal);
-
-// ════════════════════════════════════════
 // 초기화
-// ════════════════════════════════════════
 renderHome();
-initCal();
-</script>
-  <script type="module">
-  import 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js';
-
-  const picker = document.querySelector('#picker');
-
-  picker.addEventListener('emoji-click', event => {
-    selEmoji = event.detail.unicode;
-  });
 </script>
 </body>
 </html>
