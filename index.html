@@ -139,7 +139,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
 <!-- 홈 -->
 <div class="sc on" id="sc-home">
   <div style="padding:20px 20px 0;">
-    <div style="font-size:28px;font-weight:700;color:var(--navy);">커튼콜 🎭</div>
+    <div style="font-size:28px;font-weight:700;color:var(--navy);">회전문 🎭</div>
     <div style="font-size:12px;color:var(--mu);margin-top:2px;">오늘도 커튼콜!</div>
   </div>
   <div id="home-banner" style="display:none;" class="banner">
@@ -229,10 +229,10 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
   <div class="modal">
     <h3>새 공연 추가</h3>
     <label class="lbl">공연명</label>
-    <input class="inp" id="i-sname" placeholder="예) 어쩌면 해피엔딩">
+    <input class="inp" id="i-sname" placeholder="공연명을 입력하세요.">
     <label class="lbl">장르</label>
     <select class="inp" id="i-sgenre">
-      <option>뮤지컬</option><option>연극</option><option>오페라</option><option>콘서트</option><option>기타</option>
+      <option>뮤지컬</option><option>연극</option><option>오페라</option><option>기타</option>
     </select>
     <div class="brow">
       <button class="mbtn s" onclick="closeModal('m-add-show')">취소</button>
@@ -253,7 +253,7 @@ body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: va
       <button class="cb" onclick="changeCnt(1)">+</button>
     </div>
     <label class="lbl">도장 모양</label>
-    <div class="epwrap"><div class="epgrid" id="ep-grid"></div></div>
+<emoji-picker id="picker"></emoji-picker>
     <label class="lbl">혜택 구간 설정</label>
     <div id="rew-rows"></div>
     <button class="addrb" onclick="addRewRow('rew-rows')">+ 혜택 구간 추가</button>
@@ -421,22 +421,6 @@ function setTime(ctx, t) {
 }
 
 function today() { return new Date().toISOString().split('T')[0]; }
-
-// ════════════════════════════════════════
-// 이모지 픽커
-// ════════════════════════════════════════
-function initEpicker() {
-  var g = document.getElementById('ep-grid');
-  g.innerHTML = EMOJIS.map(function(e) {
-    return '<div class="ep' + (e === selEmoji ? ' on' : '') + '" onclick="pickEmoji(this,\'' + e + '\')">' + e + '</div>';
-  }).join('');
-}
-
-function pickEmoji(el, e) {
-  selEmoji = e;
-  document.querySelectorAll('#ep-grid .ep').forEach(function(ep) { ep.classList.remove('on'); });
-  el.classList.add('on');
-}
 
 // ════════════════════════════════════════
 // 네비게이션
@@ -1090,6 +1074,15 @@ document.querySelector('#sc-cal .actbtn').addEventListener('click', openRecordMo
 // ════════════════════════════════════════
 renderHome();
 initCal();
+</script>
+  <script type="module">
+  import 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js';
+
+  const picker = document.querySelector('#picker');
+
+  picker.addEventListener('emoji-click', event => {
+    selEmoji = event.detail.unicode;
+  });
 </script>
 </body>
 </html>
