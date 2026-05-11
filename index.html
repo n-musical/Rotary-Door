@@ -920,7 +920,9 @@ function renderCal() {
     db.shows.forEach(function(s, si) {
       s.pads.forEach(function(p) {
         (p.records || []).forEach(function(r) {
-          if (r.date === ds) recs.push({ r: r, s: s, si: si });
+          if (r.date === ds && recs.length === 0) {
+  recs.push({ r: r, s: s, si: si });
+}
         });
       });
     });
